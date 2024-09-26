@@ -1,59 +1,43 @@
-#!/bin/bash
+// Check and install Git if necessary
+import { execSync } from "child_process";
 
-# Check if Homebrew is installed, and install if not
-if ! command -v brew &> /dev/null
-then
-    echo "Homebrew not found, installing Homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-else
-    echo "Homebrew is already installed!"
-fi
+try {
+  execSync("git --version", { stdio: "ignore" });
+} catch (error) {
+  console.log("Git not found. Installing Git...");
+  execSync("brew install git", { stdio: "inherit" });
+}
 
-# Ensure Homebrew is up-to-date
-echo "Updating Homebrew..."
-brew update
+// Import required packages
+import inquirer from "inquirer"; 
+import qr from "qr-image"; 
+import fs from "fs";
 
-# Install Git using Homebrew
-echo "Installing Git..."
-brew install git
+// Prompt the user for a URL
+inquirer
+  .prompt([
+    {
+      message: "Type in your URL: ",
+      name: "URL"
+    },
+  ])
+  .then((answers) => {
+    const url = answers.URL;
+    
+    // Generate and save the QR code
+    const qr_svg = qr.image(url);
+    qr_svg.pipe(fs.createWriteStream("qr_image.png"));
 
-# Install Flutter using Homebrew
-echo "Installing Flutter..."
-brew install --cask flutter
-
-# Check if Flutter installed correctly and add to PATH
-if command -v flutter &> /dev/null
-then
-    echo "Flutter installed successfully!"
-else
-    echo "Flutter installation failed!"
-    exit 1
-fi
-
-# Add Flutter to the PATH in shell profile
-echo "Adding Flutter to your PATH..."
-FLUTTER_PATH=$(brew --prefix flutter)
-SHELL_PROFILE="$HOME/.zshrc"
-
-if [ -f "$SHELL_PROFILE" ]; then
-    echo "export PATH=\"\$PATH:$FLUTTER_PATH/bin\"" >> $SHELL_PROFILE
-    echo "Flutter path added to $SHELL_PROFILE"
-else
-    echo "No shell profile found, manually add the following line to your shell profile:"
-    echo "export PATH=\"\$PATH:$FLUTTER_PATH/bin\""
-fi
-
-# Source the shell profile to apply changes
-echo "Sourcing the shell profile..."
-source $SHELL_PROFILE
-
-# Run Flutter Doctor to check installation status
-echo "Running Flutter Doctor to verify installation..."
-flutter doctor
-
-# Check if Flutter is fully installed and dependencies are resolved
-if flutter doctor | grep -q "No issues found"; then
-    echo "Flutter has been installed and verified successfully!"
-else
-    echo "There were issues during installation. Please check the output above."
-fi
+    // Save the URL to a text file
+    fs.writeFile("URL.txt", url, (err) => {
+      if (err) throw err;
+      console.log("The file has been saved!");
+    });
+  })
+  .catch((error) => {
+    if (error.isTtyError) {
+      // Prompt couldn't be rendered in the current environment
+    } else {
+      console.error("An error occurred:", error);
+    }
+  });
